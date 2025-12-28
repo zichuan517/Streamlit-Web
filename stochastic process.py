@@ -210,27 +210,47 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs(
 with tab1:
     st.subheader("标准布朗运动（维纳过程）")
     st.latex(r"B(0)=0,\quad B(t)-B(s)\sim\mathcal N(0,t-s)")
-    st.markdown(
-        r"- **直观解释**：随机微小扰动不断累积，形成连续但不可导的轨迹。" "\n"
-        r"- **扩散特性**：方差随时间线性增长。"
-    )
 
     X = sim_standard_bm_3d(n_particles, steps, dt, sigma, seed)
+
     t_idx = st.slider("时间索引 t", 0, steps, steps // 2, key="t1")
+
     st.plotly_chart(
         _plot_3d_swarm(X, t_idx, show_traj, "标准布朗运动：三维粒子群"),
         width="stretch"
     )
 
-    st.markdown("#### 单个粒子的三维完整轨迹")
-    st.plotly_chart(
-        _plot_single_trajectory(
-            X,
-            pid_single,
-            "标准布朗运动：单粒子三维轨迹"
-        ),
-        width="stretch"
+    st.markdown("### 单粒子轨迹（1D / 2D / 3D）")
+
+    tr = X[:, pid_single, :]
+    t = np.arange(steps + 1) * dt
+
+    fig1d = go.Figure()
+    fig1d.add_trace(go.Scatter(x=t, y=tr[:, 0], mode="lines"))
+    fig1d.update_layout(
+        title="1D 标准布朗运动轨迹",
+        xaxis_title="t",
+        yaxis_title="x(t)"
     )
+
+    fig2d = go.Figure()
+    fig2d.add_trace(go.Scatter(x=tr[:, 0], y=tr[:, 1], mode="lines"))
+    fig2d.update_layout(
+        title="2D 标准布朗运动轨迹",
+        xaxis_title="x",
+        yaxis_title="y",
+        xaxis=dict(scaleanchor="y", scaleratio=1)
+    )
+
+    fig3d = _plot_single_trajectory(
+        X,
+        pid_single,
+        "3D 标准布朗运动轨迹"
+    )
+
+    st.plotly_chart(fig1d, width="stretch")
+    st.plotly_chart(fig2d, width="stretch")
+    st.plotly_chart(fig3d, width="stretch")
 
 # Tab 2
 with tab2:
@@ -311,10 +331,11 @@ with tab4:
 with tab5:
     st.subheader("理论结果 vs 数值模拟验证")
 
-    st.markdown("### 1. 标准布朗运动：均值与方差")
-
     X = sim_standard_bm_3d(n_particles, steps, dt, sigma, seed)
     t = np.arange(steps + 1) * dt
+
+    st.markdown("### 1. 标准布朗运动：均值与方差")
+    st.latex(r"\mathbb{E}[X(t)] = 0,\qquad \mathrm{Var}[X(t)] = \sigma^2 t")
 
     mean_sim = X[:, :, 0].mean(axis=1)
     var_sim = X[:, :, 0].var(axis=1)
@@ -324,18 +345,58 @@ with tab5:
 
     fig1 = go.Figure()
     fig1.add_trace(go.Scatter(x=t, y=mean_sim, mode="lines", name="模拟均值"))
-    fig1.add_trace(go.Scatter(x=t, y=mean_theory, mode="lines", name="理论均值", line=dict(dash="dash")))
+    fig1.add_trace(go.Scatter(x=t, y=mean_theory, mode="lines",
+                              name="理论均值",
+                              line=dict(dash="dash")))
     fig1.update_layout(title="标准布朗运动：均值", xaxis_title="t", yaxis_title="均值")
 
     fig2 = go.Figure()
     fig2.add_trace(go.Scatter(x=t, y=var_sim, mode="lines", name="模拟方差"))
-    fig2.add_trace(go.Scatter(x=t, y=var_theory, mode="lines", name="理论方差", line=dict(dash="dash")))
+    fig2.add_trace(go.Scatter(x=t, y=var_theory, mode="lines",
+                              name="理论方差",
+                              line=dict(dash="dash")))
     fig2.update_layout(title="标准布朗运动：方差", xaxis_title="t", yaxis_title="方差")
 
     st.plotly_chart(fig1, width="stretch")
     st.plotly_chart(fig2, width="stretch")
 
-    st.markdown("### 2. 漂移布朗运动：期望值")
+    st.markdown("### 2. 标准布朗运动：均方位移")
+    st.latex(r"\langle r^2(t) \rangle = d\,\sigma^2 t \quad (d=1,2,3)")
+
+    r2_1d = (X[:, :, 0] ** 2).mean(axis=1)
+    r2_2d = (X[:, :, 0] ** 2 + X[:, :, 1] ** 2).mean(axis=1)
+    r2_3d = (X ** 2).sum(axis=2).mean(axis=1)
+
+    r2_1d_th = sigma**2 * t
+    r2_2d_th = 2 * sigma**2 * t
+    r2_3d_th = 3 * sigma**2 * t
+
+    fig_r2 = go.Figure()
+    fig_r2.add_trace(go.Scatter(x=t, y=r2_1d, mode="lines", name="1D 模拟"))
+    fig_r2.add_trace(go.Scatter(x=t, y=r2_1d_th, mode="lines",
+                                name="1D 理论",
+                                line=dict(dash="dash")))
+
+    fig_r2.add_trace(go.Scatter(x=t, y=r2_2d, mode="lines", name="2D 模拟"))
+    fig_r2.add_trace(go.Scatter(x=t, y=r2_2d_th, mode="lines",
+                                name="2D 理论",
+                                line=dict(dash="dash")))
+
+    fig_r2.add_trace(go.Scatter(x=t, y=r2_3d, mode="lines", name="3D 模拟"))
+    fig_r2.add_trace(go.Scatter(x=t, y=r2_3d_th, mode="lines",
+                                name="3D 理论",
+                                line=dict(dash="dash")))
+
+    fig_r2.update_layout(
+        title="标准布朗运动：均方位移扩散定律",
+        xaxis_title="t",
+        yaxis_title="⟨r²(t)⟩"
+    )
+
+    st.plotly_chart(fig_r2, width="stretch")
+
+    st.markdown("### 3. 漂移布朗运动：期望值")
+    st.latex(r"\mathbb{E}[X(t)] = \mu t")
 
     X = sim_drift_bm_3d(n_particles, steps, dt, mu, sigma, seed + 1)
     mean_sim = X[:, :, 0].mean(axis=1)
@@ -343,12 +404,15 @@ with tab5:
 
     fig3 = go.Figure()
     fig3.add_trace(go.Scatter(x=t, y=mean_sim, mode="lines", name="模拟均值"))
-    fig3.add_trace(go.Scatter(x=t, y=mean_theory, mode="lines", name="理论均值", line=dict(dash="dash")))
+    fig3.add_trace(go.Scatter(x=t, y=mean_theory, mode="lines",
+                              name="理论均值",
+                              line=dict(dash="dash")))
     fig3.update_layout(title="漂移布朗运动：期望", xaxis_title="t", yaxis_title="均值")
 
     st.plotly_chart(fig3, width="stretch")
 
-    st.markdown("### 3. 相关布朗运动：协方差验证")
+    st.markdown("### 4. 相关布朗运动：协方差验证")
+    st.latex(r"\mathrm{Cov}(X_i(t), X_j(t)) = \sigma^2 t\,\rho_{ij}")
 
     X = sim_correlated_bm_3d(n_particles, steps, dt, sigma, rho, seed + 2)
     X_t = X[-1]
@@ -357,17 +421,18 @@ with tab5:
     cov_theory = sigma**2 * t[-1] * _spd_corr_matrix(3, rho)
 
     fig_cov = go.Figure()
-    fig_cov.add_trace(go.Heatmap(z=cov_sim, zmin=cov_theory.min(), zmax=cov_theory.max(), colorbar=dict(title="协方差")))
+    fig_cov.add_trace(go.Heatmap(z=cov_sim, colorbar=dict(title="协方差")))
     fig_cov.update_layout(title="相关布朗运动：模拟协方差矩阵")
 
     fig_cov_th = go.Figure()
-    fig_cov_th.add_trace(go.Heatmap(z=cov_theory, zmin=cov_theory.min(), zmax=cov_theory.max(), colorbar=dict(title="协方差")))
+    fig_cov_th.add_trace(go.Heatmap(z=cov_theory, colorbar=dict(title="协方差")))
     fig_cov_th.update_layout(title="相关布朗运动：理论协方差矩阵")
 
     st.plotly_chart(fig_cov, width="stretch")
     st.plotly_chart(fig_cov_th, width="stretch")
 
-    st.markdown("### 4. 几何布朗运动：期望值")
+    st.markdown("### 5. 几何布朗运动：期望值")
+    st.latex(r"\mathbb{E}[X(t)] = X_0 e^{\mu t}")
 
     X = sim_gbm_3d(n_particles, steps, dt, mu, sigma, rho, x0, seed + 3)
     mean_sim = X[:, :, 0].mean(axis=1)
@@ -375,7 +440,9 @@ with tab5:
 
     fig4 = go.Figure()
     fig4.add_trace(go.Scatter(x=t, y=mean_sim, mode="lines", name="模拟均值"))
-    fig4.add_trace(go.Scatter(x=t, y=mean_theory, mode="lines", name="理论期望", line=dict(dash="dash")))
+    fig4.add_trace(go.Scatter(x=t, y=mean_theory, mode="lines",
+                              name="理论期望",
+                              line=dict(dash="dash")))
     fig4.update_layout(title="几何布朗运动：期望", xaxis_title="t", yaxis_title="均值")
 
     st.plotly_chart(fig4, width="stretch")
