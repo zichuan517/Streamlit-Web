@@ -450,5 +450,5 @@ with tab5:
 
 st.divider()
 st.markdown(
-    r"**说明**：左侧调整参数 $\mu,\sigma,\rho,\Delta t$，观察不同布朗运动的随机行为差异。"
+    r"**说明**：左侧调整参数 $\mu,\sigma,\rho$，观察不同布朗运动的随机行为差异。"
 )
